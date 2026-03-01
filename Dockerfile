@@ -122,15 +122,14 @@ RUN npx -y @upstash/context7-mcp@latest --help > /dev/null 2>&1 || true & \
     npx -y @pimzino/spec-workflow-mcp@latest --help > /dev/null 2>&1 || true & \
     wait
 
-# Playwright: install system dependencies (requires root)
-USER root
-RUN npx -y playwright install-deps chromium chrome
-USER node
-
-# Playwright: download browser binaries (Chromium + Chrome)
+# Playwright: install browsers with system dependencies (requires root)
 # Chromium: default for Playwright test automation
 # Chrome: default for Playwright MCP server
-RUN npx -y playwright install chromium chrome
+# --with-deps installs both system deps and browser binaries in one step
+USER root
+RUN npx -y playwright install --with-deps chromium chrome && \
+    chown -R node:node /home/node/.cache/ms-playwright
+USER node
 
 # Copy firewall script and startup scripts
 COPY init-firewall.sh /usr/local/bin/
