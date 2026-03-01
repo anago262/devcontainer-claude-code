@@ -1,10 +1,5 @@
 {
   "mcpServers": {
-    "spec-workflow": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@pimzino/spec-workflow-mcp@latest", "/workspace"]
-    },
     "context7": {
       "type": "stdio",
       "command": "npx",
@@ -14,6 +9,46 @@
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "@playwright/mcp@latest"]
+    },
+    "github": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "brave-search": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
+      }
+    },
+    "drawio": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "drawio-mcp"]
+    },
+    "serena": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena",
+        "start-mcp-server",
+        "--context=claude-code",
+        "--project-from-cwd"
+      ]
+    },
+    "claude-mem": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "/usr/local/share/npm-global/lib/node_modules/claude-mem/plugin/scripts/mcp-server.cjs"
+      ]
     }
   }
 }

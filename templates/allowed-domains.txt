@@ -3,7 +3,23 @@
 #
 # Core domains (GitHub, npm, Anthropic, VS Code, Sentry/Statsig)
 # are always allowed by the base image and do not need to be listed here.
-#
-# Examples:
+
+# --- MCP Servers ---
+
+# Context7 (library documentation)
+context7.com
+clerk.context7.com
+
+# Brave Search API
+api.search.brave.com
+
+# Serena (code intelligence, installed via uvx from GitHub)
+# GitHub is already in core domains, no extra entry needed.
+
+# draw.io MCP
+# No external API calls needed (runs locally).
+
+# --- Common Development Services ---
+# Uncomment as needed for your project:
 # api.example.com
 # cdn.example.com
