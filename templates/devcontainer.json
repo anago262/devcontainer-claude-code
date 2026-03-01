@@ -2,7 +2,7 @@
 // Copy this file to .devcontainer/devcontainer.json in your project.
 {
   "name": "My Project Sandbox",
-  "image": "ghcr.io/anago262/devcontainer-claude-code:1",
+  "image": "ghcr.io/anago262/devcontainer-claude-code:2",
   "runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],
   "customizations": {
     "vscode": {
@@ -35,6 +35,7 @@
   "mounts": [
     "source=claude-code-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
     "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume",
+    "source=claude-mem-data-${devcontainerId},target=/home/node/.claude-mem,type=volume",
     "source=${localEnv:HOME}/.claude/CLAUDE.md,target=/home/node/.claude/CLAUDE.md,type=bind,readonly"
   ],
   "containerEnv": {
@@ -42,8 +43,8 @@
     "CLAUDE_CONFIG_DIR": "/home/node/.claude",
     "POWERLEVEL9K_DISABLE_GITSTATUS": "true"
   },
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
-  "workspaceFolder": "/workspace",
-  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=delegated",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh; /usr/local/bin/init-claude-mem-settings.sh; /usr/local/bin/start-chromadb.sh; /usr/local/bin/start-claude-mem-worker.sh",
   "waitFor": "postStartCommand"
 }

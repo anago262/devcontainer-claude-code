@@ -11,7 +11,7 @@ ENV TZ="$TZ"
 
 ARG CLAUDE_CODE_VERSION=latest
 
-# Install basic development tools and iptables/ipset
+# Install basic development tools, iptables/ipset, and python3-pip (for ChromaDB)
 RUN apt-get update && apt-get install -y --no-install-recommends \
   less \
   git \
@@ -31,7 +31,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   jq \
   nano \
   vim \
+  python3-pip \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install uv/uvx (for Serena MCP server)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+
+# Install ChromaDB (claude-mem vector search backend)
+RUN pip3 install --break-system-packages chromadb
 
 # Ensure default node user has access to /usr/local/share
 RUN mkdir -p /usr/local/share/npm-global && \
@@ -84,21 +91,55 @@ RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/
   -a "export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhistory/.bash_history" \
   -x
 
-# Install Claude
+# Install Bun (claude-mem worker service runtime)
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/home/node/.bun/bin:$PATH"
+
+# Install Claude Code
 RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
 
-# Playwright MCP: install system dependencies (requires root)
+# Install claude-mem (MCP server + worker service)
+RUN npm install -g claude-mem
+ENV CLAUDE_MEM_SCRIPTS="/usr/local/share/npm-global/lib/node_modules/claude-mem/plugin/scripts"
+
+# Create claude-mem directories and hook fallback symlink
+# claude-mem hooks expect plugin at ~/.claude/plugins/marketplaces/thedotmack/plugin
+# but npm -g installs to /usr/local/share/npm-global/lib/node_modules/claude-mem/plugin
+RUN mkdir -p /home/node/.claude-mem /home/node/.claude/plugins/marketplaces/thedotmack \
+  && ln -s /usr/local/share/npm-global/lib/node_modules/claude-mem/plugin \
+     /home/node/.claude/plugins/marketplaces/thedotmack/plugin
+
+# Pre-download ChromaDB ONNX embedding model (all-MiniLM-L6-v2)
+# Avoids runtime download which may be blocked by network restrictions
+RUN python3 -c "from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2; ef = ONNXMiniLM_L6_V2(); ef(['warmup'])"
+
+# Pre-install MCP server packages at build time (avoids slow npx warmup on every start)
+RUN npx -y @upstash/context7-mcp@latest --help > /dev/null 2>&1 || true & \
+    npx -y @playwright/mcp@latest --help > /dev/null 2>&1 || true & \
+    npx -y @modelcontextprotocol/server-brave-search --help > /dev/null 2>&1 || true & \
+    npx -y drawio-mcp --help > /dev/null 2>&1 || true & \
+    npx -y @modelcontextprotocol/server-github --help > /dev/null 2>&1 || true & \
+    npx -y @pimzino/spec-workflow-mcp@latest --help > /dev/null 2>&1 || true & \
+    wait
+
+# Playwright: install system dependencies (requires root)
 USER root
 RUN npx -y playwright install-deps chromium
 USER node
 
-# Playwright MCP: download Chromium browser binary (saved to node user's cache)
-RUN npx -y playwright install chromium
+# Playwright: download browser binaries (Chromium + Chrome)
+# Chromium: default for Playwright test automation
+# Chrome: default for Playwright MCP server
+RUN npx -y playwright install chromium chrome
 
-# Copy and set up firewall script
+# Copy firewall script and startup scripts
 COPY init-firewall.sh /usr/local/bin/
+COPY scripts/ /usr/local/bin/
 USER root
-RUN chmod +x /usr/local/bin/init-firewall.sh && \
+RUN chmod +x /usr/local/bin/init-firewall.sh \
+    /usr/local/bin/start-chromadb.sh \
+    /usr/local/bin/start-claude-mem-worker.sh \
+    /usr/local/bin/init-claude-mem-settings.sh && \
   echo "node ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh" > /etc/sudoers.d/node-firewall && \
   chmod 0440 /etc/sudoers.d/node-firewall
 USER node

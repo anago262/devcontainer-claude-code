@@ -23,7 +23,10 @@ CORE_DOMAINS=(
 )
 
 # --- Tier 2: Project domains (from file) ---
-PROJECT_DOMAINS_FILE="/workspace/.devcontainer/allowed-domains.txt"
+# Auto-detect workspace directory (supports /workspace and /workspaces/<name>)
+WORKSPACE_DIR=$(find /workspaces -maxdepth 1 -mindepth 1 -type d 2>/dev/null | head -1)
+WORKSPACE_DIR="${WORKSPACE_DIR:-/workspace}"
+PROJECT_DOMAINS_FILE="${WORKSPACE_DIR}/.devcontainer/allowed-domains.txt"
 PROJECT_DOMAINS=()
 if [ -f "$PROJECT_DOMAINS_FILE" ]; then
     echo "Loading project domains from $PROJECT_DOMAINS_FILE..."

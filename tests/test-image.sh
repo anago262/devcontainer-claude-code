@@ -21,7 +21,7 @@ echo "=== Dev Container Base Image Smoke Tests ==="
 echo
 
 # --- Tool existence ---
-echo "--- Tool existence ---"
+echo "--- Core tools ---"
 check "node is installed"       node --version
 check "npm is installed"        npm --version
 check "git is installed"        git --version
@@ -38,15 +38,40 @@ check "nano is installed"       nano --version
 check "vim is installed"        vim --version
 check "sudo is installed"       sudo --version
 
-# --- Claude Code ---
+# --- AI / MCP tools ---
 echo
-echo "--- Claude Code ---"
+echo "--- AI / MCP tools ---"
 check "claude is installed"     claude --version
+check "bun is installed"        bun --version
+check "uv is installed"         uv --version
+check "uvx is installed"        uvx --version
+check "pip3 is installed"       pip3 --version
+
+# --- claude-mem stack ---
+echo
+echo "--- claude-mem stack ---"
+check "claude-mem is installed"           which claude-mem
+check "chromadb is installed"             python3 -c "import chromadb"
+check "ONNX model is cached"             python3 -c "from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2; ef = ONNXMiniLM_L6_V2()"
+check "claude-mem plugin symlink exists"  test -L /home/node/.claude/plugins/marketplaces/thedotmack/plugin
+check "claude-mem scripts dir exists"     test -d /usr/local/share/npm-global/lib/node_modules/claude-mem/plugin/scripts
 
 # --- Playwright ---
 echo
 echo "--- Playwright ---"
-check "playwright is installed" npx playwright --version
+check "playwright is installed"   npx playwright --version
+check "chromium browser exists"   npx playwright install --dry-run chromium 2>&1 | grep -q "already installed\|up to date"
+check "chrome browser exists"     npx playwright install --dry-run chrome 2>&1 | grep -q "already installed\|up to date"
+
+# --- Startup scripts ---
+echo
+echo "--- Startup scripts ---"
+check "start-chromadb.sh exists"              test -f /usr/local/bin/start-chromadb.sh
+check "start-chromadb.sh is executable"       test -x /usr/local/bin/start-chromadb.sh
+check "start-claude-mem-worker.sh exists"     test -f /usr/local/bin/start-claude-mem-worker.sh
+check "start-claude-mem-worker.sh is executable" test -x /usr/local/bin/start-claude-mem-worker.sh
+check "init-claude-mem-settings.sh exists"    test -f /usr/local/bin/init-claude-mem-settings.sh
+check "init-claude-mem-settings.sh is executable" test -x /usr/local/bin/init-claude-mem-settings.sh
 
 # --- Firewall script ---
 echo
@@ -61,7 +86,9 @@ check "DEVCONTAINER=true"       test "$DEVCONTAINER" = "true"
 check "SHELL is zsh"            test "$SHELL" = "/bin/zsh"
 check "node user (UID 1000)"    test "$(id -u)" = "1000"
 check "/workspace exists"       test -d /workspace
-check "/home/node/.claude exists" test -d /home/node/.claude
+check "/home/node/.claude exists"     test -d /home/node/.claude
+check "/home/node/.claude-mem exists" test -d /home/node/.claude-mem
+check "CLAUDE_MEM_SCRIPTS is set"     test -n "$CLAUDE_MEM_SCRIPTS"
 
 # --- Sudoers ---
 echo

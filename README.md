@@ -6,9 +6,11 @@ Claude Code 開発環境の共通ベースイメージ。GHCR に公開し、各
 
 | カテゴリ | 内容 |
 |---------|------|
-| ランタイム | Node.js 20, npm |
-| AI ツール | Claude Code, Playwright (Chromium) |
-| 開発ツール | git, gh (GitHub CLI), delta, fzf, jq, nano, vim |
+| ランタイム | Node.js 20, npm, Bun |
+| AI ツール | Claude Code, Playwright (Chromium + Chrome) |
+| MCP 基盤 | claude-mem, ChromaDB, ONNX 埋め込みモデル |
+| MCP キャッシュ | Context7, Playwright, GitHub, Brave Search, draw.io, spec-workflow |
+| 開発ツール | git, gh (GitHub CLI), delta, fzf, jq, nano, vim, uv/uvx |
 | シェル | zsh + Powerlevel10k |
 | ネットワーク | iptables, ipset, dnsutils, aggregate（ファイアウォール用） |
 
@@ -19,8 +21,10 @@ Dev Container 内のネットワークアクセスを制限する `init-firewall
 | 層 | ソース | 説明 |
 |----|--------|------|
 | **Core（固定）** | スクリプト内にハードコード | GitHub, npm, Anthropic, VS Code, Sentry/Statsig |
-| **Project（ファイル）** | `/workspace/.devcontainer/allowed-domains.txt` | プロジェクト固有のドメイン（MCP サーバー等） |
+| **Project（ファイル）** | `.devcontainer/allowed-domains.txt` | プロジェクト固有のドメイン（MCP サーバー等） |
 | **Extra（環境変数）** | `EXTRA_ALLOWED_DOMAINS` | アドホックな一時追加（カンマ区切り） |
+
+ワークスペースパスは自動検出される（`/workspace` と `/workspaces/<name>` の両方に対応）。
 
 ### Core ドメイン（常に許可）
 
@@ -29,6 +33,42 @@ Dev Container 内のネットワークアクセスを制限する `init-firewall
 - `sentry.io`, `statsig.anthropic.com`, `statsig.com` — テレメトリ
 - `marketplace.visualstudio.com`, `vscode.blob.core.windows.net`, `update.code.visualstudio.com` — VS Code
 - GitHub（`api.github.com/meta` から自動取得）
+
+## claude-mem スタック
+
+ベースイメージに claude-mem の全インフラが組み込まれている:
+
+| コンポーネント | 説明 |
+|---------------|------|
+| **ChromaDB** | ベクトル検索バックエンド（pip でインストール済み） |
+| **Bun** | claude-mem ワーカーサービスのランタイム |
+| **claude-mem** | MCP サーバー + ワーカーサービス（npm -g） |
+| **ONNX モデル** | all-MiniLM-L6-v2 埋め込みモデル（事前ダウンロード済み） |
+
+### 起動スクリプト
+
+| スクリプト | 説明 |
+|-----------|------|
+| `init-claude-mem-settings.sh` | ChromaDB 接続設定、プラグイン登録、hooks 設定 |
+| `start-chromadb.sh` | ChromaDB をバックグラウンドで起動（ポート 8100） |
+| `start-claude-mem-worker.sh` | claude-mem ワーカーをデーモンとして起動（ポート 37777） |
+
+`postStartCommand` で以下の順に呼び出す:
+
+```bash
+sudo /usr/local/bin/init-firewall.sh; /usr/local/bin/init-claude-mem-settings.sh; /usr/local/bin/start-chromadb.sh; /usr/local/bin/start-claude-mem-worker.sh
+```
+
+## MCP サーバーキャッシュ
+
+以下の MCP サーバーパッケージがビルド時にキャッシュ済み（初回起動の `npx` が高速化）:
+
+- `@upstash/context7-mcp` — ライブラリドキュメント検索
+- `@playwright/mcp` — ブラウザ操作・E2E テスト
+- `@modelcontextprotocol/server-github` — GitHub Issue/PR 操作
+- `@modelcontextprotocol/server-brave-search` — Web 検索
+- `drawio-mcp` — 構成図・設計図作成
+- `@pimzino/spec-workflow-mcp` — 仕様管理・タスク分解
 
 ## 使い方
 
@@ -53,12 +93,13 @@ Dev Container 内のネットワークアクセスを制限する `init-firewall
 ```jsonc
 {
   "name": "My Project",
-  "image": "ghcr.io/anago262/devcontainer-claude-code:1",
+  "image": "ghcr.io/anago262/devcontainer-claude-code:2",
   "runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],
   "remoteUser": "node",
   "mounts": [
     "source=claude-code-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
     "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume",
+    "source=claude-mem-data-${devcontainerId},target=/home/node/.claude-mem,type=volume",
     "source=${localEnv:HOME}/.claude/CLAUDE.md,target=/home/node/.claude/CLAUDE.md,type=bind,readonly"
   ],
   "containerEnv": {
@@ -66,9 +107,9 @@ Dev Container 内のネットワークアクセスを制限する `init-firewall
     "CLAUDE_CONFIG_DIR": "/home/node/.claude",
     "POWERLEVEL9K_DISABLE_GITSTATUS": "true"
   },
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
-  "workspaceFolder": "/workspace",
-  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=delegated",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh; /usr/local/bin/init-claude-mem-settings.sh; /usr/local/bin/start-chromadb.sh; /usr/local/bin/start-claude-mem-worker.sh",
   "waitFor": "postStartCommand"
 }
 ```
@@ -79,12 +120,8 @@ Dev Container 内のネットワークアクセスを制限する `init-firewall
 
 ```
 # Context7 MCP
-mcp.context7.com
-api.context7.com
-
-# Playwright downloads
-cdn.playwright.dev
-playwright.download.prss.microsoft.com
+context7.com
+clerk.context7.com
 
 # Brave Search
 api.search.brave.com
@@ -117,14 +154,14 @@ docker run --rm devcontainer-claude-code:local bash tests/test-image.sh
 ### リリース（GHCR パブリッシュ）
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v2.0.0
+git push origin v2.0.0
 ```
 
 GitHub Actions が自動で以下のタグを GHCR に push:
-- `ghcr.io/anago262/devcontainer-claude-code:1.0.0`
-- `ghcr.io/anago262/devcontainer-claude-code:1.0`
-- `ghcr.io/anago262/devcontainer-claude-code:1`
+- `ghcr.io/anago262/devcontainer-claude-code:2.0.0`
+- `ghcr.io/anago262/devcontainer-claude-code:2.0`
+- `ghcr.io/anago262/devcontainer-claude-code:2`
 - `ghcr.io/anago262/devcontainer-claude-code:latest`
 
 マルチアーキテクチャ対応: `linux/amd64` + `linux/arm64`
