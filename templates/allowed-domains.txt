@@ -1,0 +1,9 @@
+# Project-specific allowed domains (Tier 2)
+# One domain per line. Lines starting with # are comments.
+#
+# Core domains (GitHub, npm, Anthropic, VS Code, Sentry/Statsig)
+# are always allowed by the base image and do not need to be listed here.
+#
+# Examples:
+# api.example.com
+# cdn.example.com
