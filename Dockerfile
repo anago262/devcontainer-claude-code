@@ -125,7 +125,9 @@ RUN npx -y @upstash/context7-mcp@latest --help > /dev/null 2>&1 || true & \
 # Playwright: install browsers with system dependencies (requires root)
 # Chromium: default for Playwright test automation
 # Chrome: default for Playwright MCP server
-# --with-deps installs both system deps and browser binaries in one step
+# Root runs install so apt deps work; PLAYWRIGHT_BROWSERS_PATH places binaries
+# where the node user can find them at runtime.
+ENV PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
 USER root
 RUN npx -y playwright install --with-deps chromium chrome && \
     chown -R node:node /home/node/.cache/ms-playwright
