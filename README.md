@@ -148,7 +148,7 @@ docker build -t devcontainer-claude-code:local .
 ### テスト実行
 
 ```bash
-docker run --rm devcontainer-claude-code:local bash tests/test-image.sh
+docker run --rm -v "$(pwd)/tests:/workspace/tests" devcontainer-claude-code:local bash tests/test-image.sh
 ```
 
 ### リリース（GHCR パブリッシュ）
