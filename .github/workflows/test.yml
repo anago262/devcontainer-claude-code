@@ -28,7 +28,7 @@ jobs:
 
       - name: Run smoke tests
         run: |
-          docker run --rm devcontainer-claude-code:test bash tests/test-image.sh
+          docker run --rm -v ${{ github.workspace }}/tests:/workspace/tests devcontainer-claude-code:test bash tests/test-image.sh
 
       - name: Verify firewall script syntax
         run: |
