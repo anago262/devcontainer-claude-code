@@ -132,7 +132,9 @@ RUN npx -y @upstash/context7-mcp@latest --help > /dev/null 2>&1 || true & \
 # where the node user can find them at runtime.
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
 USER root
-RUN npx -y playwright install --with-deps chromium chrome && \
+# Chrome is only available for amd64; install conditionally for multi-arch builds
+RUN npx -y playwright install --with-deps chromium && \
+    ([ "$(dpkg --print-architecture)" = "amd64" ] && npx -y playwright install chrome || true) && \
     chown -R node:node /home/node/.cache
 USER node
 

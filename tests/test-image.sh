@@ -61,7 +61,12 @@ echo
 echo "--- Playwright ---"
 check "playwright is installed"   npx playwright --version
 check "chromium browser exists"   test -d /home/node/.cache/ms-playwright/chromium-*
-check "chrome browser exists"     google-chrome --version
+# Chrome is only installed on amd64 (not available for arm64)
+if [ "$(dpkg --print-architecture)" = "amd64" ]; then
+    check "chrome browser exists (amd64)" google-chrome --version
+else
+    echo "SKIP: chrome browser (not available on $(dpkg --print-architecture))"
+fi
 
 # --- Startup scripts ---
 echo
