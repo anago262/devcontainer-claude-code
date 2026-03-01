@@ -124,7 +124,7 @@ RUN npx -y @upstash/context7-mcp@latest --help > /dev/null 2>&1 || true & \
 
 # Playwright: install system dependencies (requires root)
 USER root
-RUN npx -y playwright install-deps chromium
+RUN npx -y playwright install-deps chromium chrome
 USER node
 
 # Playwright: download browser binaries (Chromium + Chrome)
