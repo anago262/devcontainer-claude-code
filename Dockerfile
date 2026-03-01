@@ -77,6 +77,9 @@ ENV PATH=$PATH:/usr/local/share/npm-global/bin
 # Set the default shell to zsh rather than sh
 ENV SHELL=/bin/zsh
 
+# Add /usr/sbin to PATH (needed for iptables, ipset in firewall scripts)
+ENV PATH="/usr/sbin:$PATH"
+
 # Set the default editor and visual
 ENV EDITOR=nano
 ENV VISUAL=nano
@@ -130,7 +133,7 @@ RUN npx -y @upstash/context7-mcp@latest --help > /dev/null 2>&1 || true & \
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
 USER root
 RUN npx -y playwright install --with-deps chromium chrome && \
-    chown -R node:node /home/node/.cache/ms-playwright
+    chown -R node:node /home/node/.cache
 USER node
 
 # Copy firewall script and startup scripts

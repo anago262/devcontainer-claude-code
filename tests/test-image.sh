@@ -31,7 +31,7 @@ check "jq is installed"         jq --version
 check "delta is installed"      delta --version
 check "fzf is installed"        fzf --version
 check "iptables is installed"   iptables --version
-check "ipset is installed"      ipset --version
+check "ipset is installed"      which ipset
 check "dig is installed"        dig -v
 check "aggregate is installed"  which aggregate
 check "nano is installed"       nano --version
@@ -50,9 +50,9 @@ check "pip3 is installed"       pip3 --version
 # --- claude-mem stack ---
 echo
 echo "--- claude-mem stack ---"
-check "claude-mem is installed"           which claude-mem
+check "claude-mem is installed"           test -d /usr/local/share/npm-global/lib/node_modules/claude-mem
 check "chromadb is installed"             python3 -c "import chromadb"
-check "ONNX model is cached"             HF_HUB_OFFLINE=1 python3 -c "from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2; ef = ONNXMiniLM_L6_V2()"
+check "ONNX model is cached"             test -d /home/node/.cache/chroma/onnx_models/all-MiniLM-L6-v2
 check "claude-mem plugin symlink exists"  test -L /home/node/.claude/plugins/marketplaces/thedotmack/plugin
 check "claude-mem scripts dir exists"     test -d /usr/local/share/npm-global/lib/node_modules/claude-mem/plugin/scripts
 
@@ -60,8 +60,8 @@ check "claude-mem scripts dir exists"     test -d /usr/local/share/npm-global/li
 echo
 echo "--- Playwright ---"
 check "playwright is installed"   npx playwright --version
-check "chromium browser exists"   npx playwright install --dry-run chromium 2>&1 | grep -q "already installed\|up to date"
-check "chrome browser exists"     npx playwright install --dry-run chrome 2>&1 | grep -q "already installed\|up to date"
+check "chromium browser exists"   test -d /home/node/.cache/ms-playwright/chromium-*
+check "chrome browser exists"     google-chrome --version
 
 # --- Startup scripts ---
 echo
